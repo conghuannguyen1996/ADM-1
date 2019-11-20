@@ -1,10 +1,14 @@
 #programming excercise 1
-def read_polyhedron(polyhedron):
-    matrix = []
-    vector = []
-    with open(polyhedron) as file:
+def read_project(text):
+    all_k, all_A, all_b, A = [], [], [], []
+    poly_flag = None
+    with open(text) as file:
         for line in file:
             if line[0] == "#":
+                continue
+            if line[0] == "k":
+                k = int(line.strip("\n").split(" ")[1])
+                all_k.append(k)
                 continue
             if line[0] == "A":
                 poly_flag = True
@@ -14,24 +18,40 @@ def read_polyhedron(polyhedron):
                 continue
                 
             if poly_flag:#matrix A
-                matrix.append([float(i) for i in line.strip("\n").split(" ")])
+                A.append([float(i) for i in line.strip("\n").split(" ")])
             else:#vektor b
-                vector = [float(i) for i in line.strip("\n").split(" ")]
-    return matrix, vector
+                all_b.append([float(i) for i in line.strip("\n").split(" ")])
+                all_A.append(A)
+                A = []
+    return all_A, all_b, all_k
     
-def read_matrix(matrix):
-    result = []
-    poly_flag = False
-    with open(matrix) as file:
+def read_image(text):
+    all_M, all_A, all_b, M, A= [], [], [], [], []
+    poly_flag = 0
+    with open(text) as file:
         for line in file:
             if line[0] == "#":
                 continue
-            if line[0] == "A":
-                poly_flag = True
+            if line[0] == "M":
+                poly_flag = 1
                 continue
-            if poly_flag:
-                result.append([float(i) for i in line.strip("\n").split(" ")])
-    return result
+            if line[0] == "A":
+                poly_flag = 2
+                continue
+            if line[0] == "b":
+                poly_flag = 3
+                continue
+                
+            if poly_flag == 1:
+                M.append([float(i) for i in line.strip("\n").split(" ")])
+            elif poly_flag == 2:
+                A.append([float(i) for i in line.strip("\n").split(" ")])
+            elif poly_flag == 3:
+                all_b.append([float(i) for i in line.strip("\n").split(" ")])
+                all_M.append(M)
+                all_A.append(A)
+                A, M = [], []
+    return all_M, all_A, all_b
     
 def project(A, b, k):
     if len(A) == 0: #no bounds
@@ -100,9 +120,9 @@ def image(M, A, b):
     
     
 #main
-A,b = read_polyhedron('polyhedron.txt')
-M = read_matrix('matrix.txt')
-#print(M)
-#print("Test Matrix aus Ex-Session 4 {}".format(project('polyhedron.txt',3)))
-print(compute_x_or_y(A,b))
-image(M,A,b)
+all_A, all_b, all_k = read_project('project_instances.dat')
+#print("k: {}\n".format(all_k) + "A: {}\n".format(all_A) + "b: {}\n".format(all_b))
+#all_M, all_A, all_b = read_image('image_instances.dat')
+#print("M: {}\n".format(all_M) + "A: {}\n".format(all_A) + "b: {}\n".format(all_b))
+for i in range(len(all_A)):
+    project(all_A[i], all_b[i], all_k[i])

@@ -25,12 +25,12 @@ def project(polyhedron, k):
     assert 1 <= k <= len(A[0]), "k must fulfill 1 <= k <= n"
     print(len(A[0]))
     red = len(A[0])-k
-    if red == 0:
-        return A,b
-    else:
-        return project_to_one_lower(A,b,red)
+    return
 
-def project_to_one_lower(A, b, red):
+def project_to_one_lower(A, b, k):
+    assert 1 <= k <= len(A[0])
+    if k == len(A[0]): 
+        return A[:],b[:]    #copys
     new_A = []
     new_b = []
     for (row_first,b_first) in zip(A,b):
@@ -42,10 +42,28 @@ def project_to_one_lower(A, b, red):
         elif row_first[-1] == 0:
             new_A.append(row_first[:-1])
             new_b.append(b_first)
-    if red-1 == 0:
-        return new_A, new_b
-    else:
-        return project_to_one_lower(new_A, new_b, red-1)
+    return project_to_one_lower(new_A, new_b, k)
 
+def compute_x_or_y(A,b):
+    matrices = [project_to_one_lower(A,b,i) for i in range(len(A[0]),0,-1)]
+    x= []
+    for (A_new,b_new) in matrices[::-1]:
+        if len(A_new) == 0:
+            print("random----------------")
+            x.append(0)
+            continue
+        else:
+            for i in range(len(A_new)):
+                for j in range(len(x)):
+                    b_new[i] -= A_new[i][j] * x[j]
+                if A_new[i][-1] != 0:
+                    b_new[i] /= A_new[i][-1]
+            x.append(max(b_new))
+    print("test {}".format(b))
+    print(x)
+        
 #main
-print("Test Matrix aus Ex-Session 4 {}".format(project('polyhedron.txt',3)))
+A,b = read_polyhedron('solution.txt')
+print(A,b)
+#print("Test Matrix aus Ex-Session 4 {}".format(project('polyhedron.txt',3)))
+compute_x_or_y(A,b)

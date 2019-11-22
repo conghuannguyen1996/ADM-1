@@ -1,6 +1,6 @@
 #programming excercise 1
-def read_project(text):
-    all_k, all_A, all_b, A = [], [], [], []
+def read_polyhedron(text):
+    A, b = [], []
     poly_flag = None
     with open(text) as file:
         for line in file:
@@ -20,39 +20,48 @@ def read_project(text):
             if poly_flag:#matrix A
                 A.append([float(i) for i in line.strip("\n").split(" ")])
             else:#vektor b
-                all_b.append([float(i) for i in line.strip("\n").split(" ")])
-                all_A.append(A)
-                A = []
-    return all_A, all_b, all_k
+                b =[float(i) for i in line.strip("\n").split(" ")]
+    return A, b
     
-def read_image(text):
-    all_M, all_A, all_b, M, A= [], [], [], [], []
-    poly_flag = 0
+def read_matrix(text):
+    M = []
+    poly_flag = False
     with open(text) as file:
         for line in file:
             if line[0] == "#":
+                poly_flag = False
                 continue
-            if line[0] == "M":
-                poly_flag = 1
+            else:
+                poly_flag = True
+                
+            if poly_flag:
+                M.append([float(i) for i in line.strip("\n").split(" ")])
+    return M
+    
+def read_image_inst(project_instances):
+    dim = 0
+    matrix = []
+    vector = []
+    with open(project_instances) as file:
+        for line in file:
+            if line[0] == "#":
+                continue
+            if line[0] == 'k':
+                dim = float(line[2])
                 continue
             if line[0] == "A":
-                poly_flag = 2
+                poly_flag = True
                 continue
             if line[0] == "b":
-                poly_flag = 3
+                poly_flag = False
                 continue
-                
-            if poly_flag == 1:
-                M.append([float(i) for i in line.strip("\n").split(" ")])
-            elif poly_flag == 2:
-                A.append([float(i) for i in line.strip("\n").split(" ")])
-            elif poly_flag == 3:
-                all_b.append([float(i) for i in line.strip("\n").split(" ")])
-                all_M.append(M)
-                all_A.append(A)
-                A, M = [], []
-    return all_M, all_A, all_b
-    
+
+            if poly_flag:#matrix A
+                matrix.append([float(i) for i in line.strip("\n").split(" ")])
+            else:#vektor b
+                vector = [float(i) for i in line.strip("\n").split(" ")]
+    return matrix, vector, dim
+
 def project(A, b, k):
     if len(A) == 0: #no bounds
         return [],[]
@@ -94,35 +103,38 @@ def compute_x_or_y(A,b):
     return True, x
 
 def image(M, A, b):
-    row_dim, col_dim = len(M), len(M[0])
+    row_dim = len(M)
+    col_dim = len(M[0])
     b_new = [0 for i in range(row_dim*2)] + b
     matrix = []
-    unten = []
-    oben = []
-    
+    upper = []
+    lower = []
+
     for line in A:  #lower matrix
-        unten.append([0 for k in range(row_dim)] + line)
-    
+        lower.append([0 for k in range(row_dim)] + line)
+
     for i in range(row_dim):    #1.part upper matrix
         temp = [0 for k in range(row_dim)]
-        temp[i] = -1
-        oben.append(temp + M[i])
-            
-    for i in range(row_dim):    #2.part upper matrix
-        temp = [0 for k in range(row_dim)]
-        temp[i] = 1
+        temp[i] = float(1)
         for j in range(col_dim):
             M[i][j] *= -1
-        oben.append(temp + M[i])
-        
-    matrix.append(oben+unten)
-    print(matrix)
-    
-    
+        upper.append(temp + M[i])
+
+    for i in range(row_dim):    #2.part upper matrix
+        temp = [0 for k in range(row_dim)]
+        temp[i] = float(-1)
+        for j in range(col_dim):
+            M[i][j] *= -1
+        upper.append(temp + M[i])
+
+    matrix = upper + lower
+
+    return project(matrix, b_new, row_dim)
+
+def H_representation(X):
+    k = len(X)
+    P = [[float(1) for i in range(k)]]
+    b = [1]
+    return image(X,P,b)
+
 #main
-all_A, all_b, all_k = read_project('project_instances.dat')
-#print("k: {}\n".format(all_k) + "A: {}\n".format(all_A) + "b: {}\n".format(all_b))
-#all_M, all_A, all_b = read_image('image_instances.dat')
-#print("M: {}\n".format(all_M) + "A: {}\n".format(all_A) + "b: {}\n".format(all_b))
-for i in range(len(all_A)):
-    project(all_A[i], all_b[i], all_k[i])

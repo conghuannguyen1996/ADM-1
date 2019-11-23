@@ -1,14 +1,11 @@
 #programming excercise 1
-def read_polyhedron(text):
+import sys
+def read_polyhedron(polyhedron):
     A, b = [], []
     poly_flag = None
-    with open(text) as file:
+    with open(polyhedron) as file:
         for line in file:
             if line[0] == "#":
-                continue
-            if line[0] == "k":
-                k = int(line.strip("\n").split(" ")[1])
-                all_k.append(k)
                 continue
             if line[0] == "A":
                 poly_flag = True
@@ -22,14 +19,18 @@ def read_polyhedron(text):
             else:#vektor b
                 b =[float(i) for i in line.strip("\n").split(" ")]
     return A, b
-    
-def read_matrix(text):
+
+
+def read_matrix(matrix):
     M = []
     poly_flag = False
-    with open(text) as file:
+    with open(matrix) as file:
         for line in file:
             if line[0] == "#":
                 poly_flag = False
+                continue
+            elif line[0] == "M" or line[0] == "X":  #only needed for test_instances.zip
+                poly_flag == True
                 continue
             else:
                 poly_flag = True
@@ -37,7 +38,8 @@ def read_matrix(text):
             if poly_flag:
                 M.append([float(i) for i in line.strip("\n").split(" ")])
     return M
-    
+
+
 def read_image_inst(project_instances):
     dim = 0
     matrix = []
@@ -62,45 +64,66 @@ def read_image_inst(project_instances):
                 vector = [float(i) for i in line.strip("\n").split(" ")]
     return matrix, vector, dim
 
-def project(A, b, k):
-    if len(A) == 0: #no bounds
-        return [],[]
-    assert 1 <= k <= len(A[0])
-    if k == len(A[0]): 
-        return A[:],b[:]    #copys
+
+def project(A, b, k, E):   #returns projected A,b and elimination matrix E
+    if len(A) == 0:
+        return [],[],[]
+    assert 1<=k<=len(A[0])
+    if k == len(A[0]):
+        return A[:], b[:], E
+    E_temp = []
     new_A = []
     new_b = []
-    for (row_first,b_first) in zip(A,b):    #iterate through rows
-        if row_first[-1] > 0:   #every positiv coefficient - every negativ coefficient(last coef)
-            for (row_second,b_second) in zip(A,b):
-                if row_second[-1] < 0:
-                    new_A.append([ai-aj for (ai,aj) in zip([i/row_first[-1] for i in row_first[:-1]],[i/row_second[-1] for i in row_second[:-1]])])
-                    new_b.append(b_first/row_first[-1] - b_second/row_second[-1])
-        elif row_first[-1] == 0:    #no bounds
-            new_A.append(row_first[:-1])
-            new_b.append(b_first)
-    return project(new_A, new_b, k)
+    positive = [i for i in range(len(A)) if A[i][-1] > 0]   #positive coef of xn
+    negative = [i for i in range(len(A)) if A[i][-1] < 0]   #negative coef of xn
+    zero = [i for i in range(len(A)) if A[i][-1] == 0]      #zero coef of xn
+
+    for i in positive:
+        for j in negative:  # sum(ai'-aj') >= bi'-bj'
+            new_A.append([A[i][l]/A[i][-1] - A[j][l]/A[j][-1] for l in range(len(A[0])-1)])
+            new_b.append(b[i]/A[i][-1] - b[j]/A[j][-1])
+            #elimnation saves the operation above
+            elimination = [0 for l in range(len(A))]
+            elimination[i] , elimination[j] = 1/A[i][-1] , -1/A[j][-1]
+            E_temp.append(elimination)
+
+    for i in zero:
+        new_A.append(A[i][:-1])
+        new_b.append(b[i])
+        #ensure row won't change(saves the operation above)
+        elimination = [0 for l in range(len(A))]
+        elimination[i] = 1
+        E_temp.append(elimination)
+
+    E.append(E_temp)
+    return project(new_A, new_b, k, E)
+
 
 def compute_x_or_y(A,b):
-    matrices = [project(A,b,i) for i in range(1,len(A[0])+1)]  #compute dimension from 1,...n
+    matrices = [project(A,b,i,[])[:-1] for i in range(1,len(A[0])+1)]  #compute dimension from 1,...n
     x= []
     
-    for (A_new,b_new) in matrices:
-        if len(A_new) == 0: #no bounds
+    for (A, b) in matrices:
+        if len(A) == 0: #no bounds
             x.append(0)
             continue
         else:          
-            for i in range(len(A_new)): #for every row
+            for i in range(len(A)): #for every row
                 for j in range(len(x)): #calculate b-x1*a-x2*b....
-                    b_new[i] -= A_new[i][j] * x[j]
-                if A_new[i][-1] != 0:   #divide by coefficient of last last variable
-                    b_new[i] /= A_new[i][-1]
-                if b[i] != 0: #x1....xn = 0 and b != 0
-                    feas = [A[i][k] != 0 for k in range(len(A[i]))]
-                    if sum(feas) == 0:
-                        return False, 
-            x.append(max(b_new))
+                    b[i] -= A[i][j] * x[j]
+                if A[i][-1] != 0:   #divide by coefficient of last last variable
+                    b[i] /= A[i][-1]
+                if b[i] > 0: #xn = 0 and b_new != 0 => no solution
+                    if A[i][-1] == 0:
+                        return False,
+            x.append(max(b))
     return True, x
+
+
+def farkas_lemma(matrices): #projects 1.....n
+    y = []
+    return
+
 
 def image(M, A, b):
     row_dim = len(M)
@@ -129,12 +152,43 @@ def image(M, A, b):
 
     matrix = upper + lower
 
-    return project(matrix, b_new, row_dim)
+    return project(matrix, b_new, row_dim, [])[:-1]
+
 
 def H_representation(X):
     k = len(X)
     P = [[float(1) for i in range(k)]]
     b = [1]
-    return image(X,P,b)
+    return image(X, P, b)
+
+
+def poly_writer(A,b ,file):
+    with open(file, "w+") as file:
+        file.write("A\n")
+        for row in A:
+            file.write(" ".join(str(e) for e in row) + "\n")
+        file.write("b\n")
+        file.write(" ".join(str(e) for e in b) + "\n")
+
 
 #main
+if sys.argv[1] == 'project':
+    A, b = read_polyhedron(sys.argv[2])
+    k = int(sys.argv[3])
+    A, b = project(A,b,k,[])[:-1]
+    poly_writer(A,b,sys.argv[4])    #overwritting output_file
+
+elif sys.argv[1] == 'image':
+    A, b = read_polyhedron(sys.argv[2])
+    M = read_matrix(sys.argv[3])
+    A, b = image(M, A, b)
+    poly_writer(A, b, sys.argv[4])  #overwritting output_file
+
+elif sys.argv[1] == 'H_representation':
+    X = read_matrix(sys.argv[2])
+    A, b = H_representation(X)
+    poly_writer(A, b, sys.argv[3])  #overwritting output_file
+
+elif sys.argv[1] == 'compute_x_or_y':
+    A, b = read_polyhedron(sys.argv[2])
+    print(compute_x_or_y(A, b))

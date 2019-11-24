@@ -1,5 +1,6 @@
 #programming excercise 1
 import sys
+import copy
 def read_polyhedron(polyhedron):
     A, b = [], []
     poly_flag = None
@@ -100,29 +101,67 @@ def project(A, b, k, E):   #returns projected A,b and elimination matrix E
 
 
 def compute_x_or_y(A,b):
-    matrices = [project(A,b,i,[])[:-1] for i in range(1,len(A[0])+1)]  #compute dimension from 1,...n
+    matrices = [project(A,b,i,[]) for i in range(1,len(A[0])+1)]  #compute dimension from 1,...n
+    matrices_copy = copy.deepcopy(matrices)
     x= []
-    
-    for (A, b) in matrices:
+    for (A, b, E) in matrices:
         if len(A) == 0: #no bounds
             x.append(0)
             continue
-        else:          
+        else:
+            smallest_bigger = -float("inf")
+            smallest_smaller = float("inf")
             for i in range(len(A)): #for every row
                 for j in range(len(x)): #calculate b-x1*a-x2*b....
                     b[i] -= A[i][j] * x[j]
-                if A[i][-1] != 0:   #divide by coefficient of last last variable
+                if A[i][-1] > 0:   #divide by coefficient of last last variable
                     b[i] /= A[i][-1]
+                    if b[i] > smallest_bigger:
+                        smallest_bigger = b[i]
+                if A[i][-1] < 0:
+                    b[i] /= A[i][-1]
+                    if b[i] < smallest_smaller:
+                        smallest_smaller = b[i]
                 if b[i] > 0: #xn = 0 and b_new != 0 => no solution
                     if A[i][-1] == 0:
-                        return False,
-            x.append(max(b))
+                        return False, farkas_lemma(matrices_copy)
+            if smallest_smaller + 1e-08< smallest_bigger:
+                return False, farkas_lemma(matrices_copy)
+            if smallest_bigger != -float("inf"): #unnecessary but gives output closer to solution
+                x.append(smallest_bigger)
+            else:
+                x.append(smallest_smaller)
     return True, x
 
 
-def farkas_lemma(matrices): #projects 1.....n
-    y = []
-    return
+def farkas_lemma(matrices): #projects 1.....n we are solving the induction start by compute_x_or_y of
+                            # A.T*y >= 0, -A.T*y >= 0, b_T*y >=0.1, In*y >= 0
+
+    A, b, E = matrices[0]
+    #induction start
+    new_A = [[A[x][0] for x in range(len(A))], [-A[x][0] for x in range(len(A))], [b[i] for i in range(len(b))]]
+    for i in range(len(b)):
+        temp = [0 for j in range(len(b))]
+        temp[i] = 1
+        new_A.append(temp)
+    new_b = [0]*2
+    new_b += [0.1]  #error prone
+    new_b += [0 for i in range(len(b))]
+    y = compute_x_or_y(new_A,new_b)[1]
+    for matrix in E:    #inductionstep
+        matrix = [[row[i] for row in matrix] for i in range(len(matrix[0]))] #tranpose
+        y = matrix_vektor(matrix,y)
+    return y
+
+
+def matrix_vektor(E,y):#multiplication
+    out = []
+    for row in E:
+        res = 0
+        for entry in range(len(row)):
+            res += row[entry]*y[entry]
+        out.append(res)
+    return out
 
 
 def image(M, A, b):
@@ -175,7 +214,7 @@ def poly_writer(A,b ,file):
 if sys.argv[1] == 'project':
     A, b = read_polyhedron(sys.argv[2])
     k = int(sys.argv[3])
-    A, b = project(A,b,k,[])[:-1]
+    A, b, E = project(A,b,k,[])
     poly_writer(A,b,sys.argv[4])    #overwritting output_file
 
 elif sys.argv[1] == 'image':

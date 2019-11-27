@@ -196,8 +196,8 @@ def image(M, A, b):
 
 def H_representation(X):
     k = len(X)
-    P = [[float(1) for i in range(k)]]
-    b = [1]
+    P = [[float(1) for i in range(k)]]+[[-float(1) for i in range(k)]]
+    b = [1]+[-1]
     return image(X, P, b)
 
 

@@ -1,3 +1,4 @@
+
 #programming excercise 1
 import sys
 import copy
@@ -14,7 +15,7 @@ def read_polyhedron(polyhedron):
             if line[0] == "b":
                 poly_flag = False
                 continue
-                
+
             if poly_flag:#matrix A
                 A.append([float(i) for i in line.strip("\n").split(" ")])
             else:#vektor b
@@ -35,7 +36,7 @@ def read_matrix(matrix):
                 continue
             else:
                 poly_flag = True
-                
+
             if poly_flag:
                 M.append([float(i) for i in line.strip("\n").split(" ")])
     return M
@@ -109,8 +110,8 @@ def compute_x_or_y(A,b):
             x.append(0)
             continue
         else:
-            smallest_bigger = -float("inf")
-            smallest_smaller = float("inf")
+            smallest_bigger = -1e+8
+            smallest_smaller = 1e+8
             for i in range(len(A)): #for every row
                 for j in range(len(x)): #calculate b-x1*a-x2*b....
                     b[i] -= A[i][j] * x[j]
@@ -195,10 +196,24 @@ def image(M, A, b):
 
 
 def H_representation(X):
-    k = len(X)
-    P = [[float(1) for i in range(k)]]+[[-float(1) for i in range(k)]]
-    b = [1]+[-1]
-    return image(X, P, b)
+    new_X = []
+    col_dim = len(X[0])
+    row_dim = len(X)
+    #transpose X
+    new_X = [[0 for l in range(row_dim)] for k in range(col_dim)]
+    for i in range(row_dim):
+        for j in range(col_dim):
+            new_X[j][i] = X[i][j]
+    #identity matrix, s.t. x>=0
+    P = [[0 for m in range(row_dim)] for n in range(row_dim)]
+    for o in range(row_dim):
+        P[o][o] = 1
+
+    #x1+...+xn = 1
+    P.append([float(1) for i in range(row_dim)])
+    P.append([float(-1) for i in range(row_dim)])
+    b = [0 for p in range(row_dim)] + [1] + [-1]
+    return image(new_X,P,b)
 
 
 def poly_writer(A,b ,file):
@@ -214,7 +229,7 @@ def poly_writer(A,b ,file):
 if sys.argv[1] == 'project':
     A, b = read_polyhedron(sys.argv[2])
     k = int(sys.argv[3])
-    A, b, E = project(A,b,k,[])
+    A, b = project(A,b,k,[])[:-1]
     poly_writer(A,b,sys.argv[4])    #overwritting output_file
 
 elif sys.argv[1] == 'image':
